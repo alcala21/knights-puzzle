@@ -25,14 +25,13 @@ class Game:
             self.exit(solution=False)
             return
         if doit == 'y':
-            self.update_board()
-            self.get_possible_moves()
+            self.fill_board()
             while self.next_moves:
                 self.draw_board()
                 self.make_move("Enter your next move: ", False)
+                self.fill_board()
         else:
-            for i, point in enumerate(self.solution):
-                self.update_cell(point, " " * (self.cell_size - len(str(i + 1))) + str(i + 1))
+            self.fill_solution()
         self.exit(manual=doit == "y")
 
     def solve(self):
@@ -51,13 +50,13 @@ class Game:
             _solution = self.solve()
             self.occupied.pop(-1)
             if _solution:
+                self.next_moves = dict(_next_moves)
                 return True
         return False
 
     def make_move(self, message, first=True):
         while True:
             try:
-                self.update_board()
                 x, y = self.get_values(message)
                 if not self.in_board(x, y):
                     raise ValueError
@@ -66,7 +65,6 @@ class Game:
                     raise InvalidMove
 
                 self.occupied.append((x, y))
-                self.board[self.occupied[-1]] = " " * (self.cell_size - 1) + "X"
                 self.get_possible_moves()
                 break
             except ValueError:
@@ -88,6 +86,7 @@ class Game:
                 if x > 0 and y > 0:
                     self.ncols, self.nrows = x, y
                     self.cell_size = len(str(x * y))
+                    self.fill_board()
                     break
                 else:
                     raise ValueError
@@ -97,11 +96,24 @@ class Game:
     def in_board(self, x, y):
         return 1 <= x <= self.ncols and 1 <= y <= self.nrows
 
-    def update_board(self):
-        self.board = {(i + 1, j + 1): "_" * self.cell_size for i in range(self.ncols) for j in range(self.nrows)}
+    def fill_board(self):
+        for i in range(self.ncols):
+            for j in range(self.nrows):
+                self.update_cell((i + 1, j + 1), "_" * self.cell_size)
 
         for point in self.occupied:
             self.update_cell(point, " " * (self.cell_size - 1) + "*")
+
+        for point, count in self.next_moves.items():
+            self.update_cell(point, " " * (self.cell_size - 1) + str(count))
+
+        if self.occupied:
+            self.update_cell(self.occupied[-1], " " * (self.cell_size - 1) + "X")
+
+
+    def fill_solution(self):
+        for i, point in enumerate(self.solution):
+            self.update_cell(point, " " * (self.cell_size - len(str(i + 1))) + str(i + 1))
 
     def update_cell(self, point, value):
         self.board[point] = value
@@ -113,7 +125,6 @@ class Game:
             ny = self.occupied[-1][1] + y
             if self.in_board(nx, ny) and (nx, ny) not in self.occupied:
                 self.count_ahead_moves((nx, ny))
-                self.update_cell((nx, ny), " " * (self.cell_size - 1) + str(self.next_moves[(nx, ny)]))
 
     def count_ahead_moves(self, point):
         count = 0
